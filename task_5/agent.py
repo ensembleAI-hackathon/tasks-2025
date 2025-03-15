@@ -54,17 +54,19 @@ class Agent:
         planets_occupation = obs.get('planets_occupation')
         resources = obs.get('resources')
 
-        for _ in range(100):
+        action_list = []
+        for ship in allied_ships:
+            ship_id = ship[0]
             shoot = random.randint(0, 1)
-            if shoot:
-                action_list = [[ship_id, shoot, random.randint(0, 3)] for ship_id in range(10)]
-            else:
-                action_list = [[ship_id, shoot, random.randint(0, 3), 3] for ship_id in range(10)]
+            action = [ship_id, shoot, random.randint(0, 3)]
+            if shoot == 0:
+                action.append(3)
+            action_list.append(action)
+
         return {
             "ships_actions": action_list,
-            "construction": 2 if resources.sum() == 1000 else 0
+            "construction": 2 if resources.sum() == 800 else 0
         }
-
 
     def load(self, abs_path: str):
         """
