@@ -87,9 +87,13 @@ class Agent:
 
         action_list = []
         for ship in allied_ships:
-            if ship[0] % 2:
+            if ship[0] % 3 == 2: # third ship
                 action_list.append(get_defense_action(obs, ship[0], self.home_planet))
-            else:
+
+            elif ship[0] % 3 == 0: # first ship
+                action_list.append(get_explore_action(obs, ship[0]))
+
+            else: # second ship
                 action_list.append(get_offense_action(obs, ship[0], self.enemy_planet))
 
         return {
@@ -178,6 +182,55 @@ def get_offense_action(obs: dict, idx: int, enemy_planet: tuple) -> list[int]:
         speed = 1
     
     return [ship_id, 0, direction, speed]
+
+def get_explore_action(obs: dict, idx: int) -> list[int]:
+    ship = obs["allied_ships"][idx]
+    found = False
+    target_x, target_y = None, None
+    max_ones_count = -1
+
+    # Check if the ship already has target coordinates
+    if hasattr(ship, 'target_x') and hasattr(ship, 'target_y'):
+        target_x, target_y = ship.target_x, ship.target_y
+        found = True
+
+    if not found:
+        for i in range(len(obs['map'])):
+            for j in range(len(obs['map'][i])):
+                if format(obs['map'][i][j], '08b')[-1] == '1' and format(obs['map'][i][j], '08b')[0:2] == '00':
+                    ones_count = sum(
+                        1 for x in range(max(0, i-3), min(len(obs['map']), i+3))
+                        for y in range(max(0, j-3), min(len(obs['map'][i]), j+3))
+                        if format(obs['map'][x][y], '08b')[-1] == '1' and format(obs['map'][x][y], '08b')[0:2] == '00'
+                    )
+                    if ones_count > max_ones_count:
+                        max_ones_count = ones_count
+                        target_x, target_y = i, j
+                        found = True
+
+    if not found:
+        # Go left and up
+        return [ship[0], 0, random.choice([0, 1]), 1]
+    else:
+        print(f"Ship {ship[0]} going to {target_x}, {target_y}")
+        # Go towards the nearest planet
+        dx = ship[1] - target_y
+        dy = ship[2] - target_x
+
+        if abs(dx) > abs(dy):
+            if dx > 0:
+                return [ship[0], 0, 2, min(3, abs(dx))]  # Move left
+            else:
+                return [ship[0], 0, 0, min(3, abs(dx))]  # Move right
+        else:
+            if dy > 0:
+                return [ship[0], 0, 3, min(3, abs(dy))]  # Move up
+            else:
+                return [ship[0], 0, 1, min(3, abs(dy))]  # Move down
+
+
+def get_defense_action(obs: dict, idx: int) -> list[int]:
+    ship = obs["allied_ships"][idx]
 
 
 def get_defense_action(obs: dict, idx: int, home_planet: tuple) -> list[int]:
