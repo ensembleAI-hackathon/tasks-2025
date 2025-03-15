@@ -47,10 +47,22 @@ class Agent:
         :param obs:
         :return:
         """
+    
+        game_map = obs.get('map')
+        allied_ships = obs.get('allied_ships')
+        enemy_ships = obs.get('enemy_ships')
+        planets_occupation = obs.get('planets_occupation')
+        resources = obs.get('resources')
 
+        for _ in range(100):
+            shoot = random.randint(0, 1)
+            if shoot:
+                action_list = [[ship_id, shoot, random.randint(0, 3)] for ship_id in range(10)]
+            else:
+                action_list = [[ship_id, shoot, random.randint(0, 3), 3] for ship_id in range(10)]
         return {
-            "ships_actions": [],
-            "construction": 0
+            "ships_actions": action_list,
+            "construction": 2 if resources.sum() == 1000 else 0
         }
 
 
