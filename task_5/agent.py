@@ -123,7 +123,7 @@ def get_defense_action(obs: dict, idx: int) -> list[int]:
     if ship[3] <= 30:
         return return_home_on_low_hp(ship, home_planet[0], home_planet[1])
 
-    return move_randomly_around_home(ship, home_planet[0], home_planet[1])
+    return move_randomly_around_home(obs, ship, home_planet[0], home_planet[1])
 
 
 def shoot_enemy_if_in_range(enemy, ship) -> list[int]:
@@ -142,25 +142,35 @@ def shoot_enemy_if_in_range(enemy, ship) -> list[int]:
     return []
 
 
-def move_randomly_around_home(ship, home_x, home_y, max_distance=15) -> list[int]:
+def move_randomly_around_home(obs : dict, ship, home_x, home_y, max_distance=15) -> list[int]:
     """
     Poruszanie się losowo w obszarze max_distance wokół planety macierzystej.
     """
     ship_x, ship_y = ship[1], ship[2]
 
-    # Losowy wybór kierunku
-    direction = random.randint(0, 3)
+    for _ in range(10): 
+        # Losowy wybór kierunku
+        direction = random.randint(0, 3)
 
-    # Przewidywana nowa pozycja
-    new_x = ship_x + (1 if direction == 0 else -1 if direction == 2 else 0)
-    new_y = ship_y + (1 if direction == 1 else -1 if direction == 3 else 0)
+        # Przewidywana nowa pozycja
+        new_x = ship_x + (1 if direction == 0 else -1 if direction == 2 else 0)
+        new_y = ship_y + (1 if direction == 1 else -1 if direction == 3 else 0)
 
-    # Sprawdzenie, czy nowa pozycja mieści się w dozwolonym obszarze wokół planety
-    if abs(new_x - home_x) + abs(new_y - home_y) <= max_distance:
+        if not (0 <= new_x < 100 and 0 <= new_y < 100):
+            continue  # Jeśli poza mapą, ponawiamy próbę
+
+        # Sprawdzenie, czy nowa pozycja mieści się w dozwolonym obszarze wokół planety
+        if abs(new_x - home_x) + abs(new_y - home_y) > max_distance:
+            continue  # Jeśli poza zakresem, ponawiamy próbę
+
+        # Sprawdzenie, czy pole NIE jest asteroidą
+        if is_asteroid(obs, new_x, new_y):
+            continue  # Jeśli to asteroida, ponawiamy próbę
+
+        # Jeśli pole jest poprawne, wykonaj ruch
         return [ship[0], 0, direction, 1]  # Ruch o 1 pole w danym kierunku
-
-    # Jeśli ruch wykracza poza obszar, zostań na miejscu
-    return [ship[0], 0, random.randint(0, 3), 0]  # Nie ruszaj się, jeśli brak dobrego ruchu
+    
+    return [ship[0], 0, direction, 1] 
 
 
 def return_home_on_low_hp(ship, home_x, home_y) -> list[int]:
@@ -183,3 +193,13 @@ def return_home_on_low_hp(ship, home_x, home_y) -> list[int]:
         else:
             # need to move down
             return [ship[0], 0, 1, min(3, abs(dy))]
+        
+def is_asteroid(obs: dict, x, y) -> bool:
+
+    point = obs['map'][x][y]
+    
+    if format(point, '08b')[-2] == '1':
+        return True
+
+    return False
+
