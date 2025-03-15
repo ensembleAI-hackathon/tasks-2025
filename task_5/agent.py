@@ -141,5 +141,23 @@ def shoot_enemy_if_in_range(enemy, ship) -> list[int]:
     return []
 
 
-def move_to_random_avail_field(ship, neighborhood) -> list[int]:
+def move_randomly_around_home(ship, home_x, home_y, max_distance=7) -> list[int]:
+    """
+    Poruszanie się losowo w obszarze max_distance wokół planety macierzystej.
+    """
+    ship_x, ship_y = ship[1], ship[2]
+
+    # Losowy wybór kierunku
+    direction = random.randint(0, 3)
+
+    # Przewidywana nowa pozycja
+    new_x = ship_x + (1 if direction == 0 else -1 if direction == 2 else 0)
+    new_y = ship_y + (1 if direction == 1 else -1 if direction == 3 else 0)
+
+    # Sprawdzenie, czy nowa pozycja mieści się w dozwolonym obszarze wokół planety
+    if abs(new_x - home_x) + abs(new_y - home_y) <= max_distance:
+        return [ship[0], 0, direction, 1]  # Ruch o 1 pole w danym kierunku
+
+    # Jeśli ruch wykracza poza obszar, zostań na miejscu
+    return [ship[0], 0, random.randint(0, 3), 0]  # Nie ruszaj się, jeśli brak dobrego ruchu
 
