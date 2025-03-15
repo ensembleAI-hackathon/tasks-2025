@@ -107,6 +107,9 @@ def get_defense_action(obs: dict, idx: int) -> list[int]:
         if choice:
             return choice
 
+    if ship[3] <= 30:
+        return return_home_on_low_hp(ship, home_planet[0], home_planet[1])
+
     return move_randomly_around_home(ship, home_planet[0], home_planet[1])
 
 
@@ -126,7 +129,7 @@ def shoot_enemy_if_in_range(enemy, ship) -> list[int]:
     return []
 
 
-def move_randomly_around_home(ship, home_x, home_y, max_distance=7) -> list[int]:
+def move_randomly_around_home(ship, home_x, home_y, max_distance=15) -> list[int]:
     """
     Poruszanie się losowo w obszarze max_distance wokół planety macierzystej.
     """
@@ -146,3 +149,24 @@ def move_randomly_around_home(ship, home_x, home_y, max_distance=7) -> list[int]
     # Jeśli ruch wykracza poza obszar, zostań na miejscu
     return [ship[0], 0, random.randint(0, 3), 0]  # Nie ruszaj się, jeśli brak dobrego ruchu
 
+
+def return_home_on_low_hp(ship, home_x, home_y) -> list[int]:
+    dx = ship[1] - home_x
+    dy = ship[2] - home_y
+
+    if abs(dx) > abs(dy):
+        # need to move in X direction first
+        if dx > 0:
+            # need to move left
+            return [ship[0], 0, 2, min(3, abs(dx))]
+        else:
+            # need to move right
+            return [ship[0], 0, 0, min(3, abs(dx))]
+    else:
+        # need to move in Y direction first
+        if dy > 0:
+            # need to move up
+            return [ship[0], 0, 3, min(3, abs(dy))]
+        else:
+            # need to move down
+            return [ship[0], 0, 1, min(3, abs(dy))]
