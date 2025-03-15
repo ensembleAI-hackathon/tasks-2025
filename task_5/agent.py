@@ -66,7 +66,7 @@ class Agent:
         # Set home_planet and enemy_planet only once on the first call
         if self.home_planet is None and planets_occupation:
             self.home_planet = planets_occupation[0]
-            
+
             # Determine enemy planet based on home planet location
             if self.home_planet[0] == 9:
                 self.enemy_planet = (90, 90)
@@ -85,7 +85,7 @@ class Agent:
                 action_list.append(get_defense_action(obs, ship[0], self.home_planet))
 
             elif ship[0] % 3 == 0: # first ship
-                action_list.append(get_explore_action(obs, ship[0]))
+                action_list.append(get_explore_action(obs, ship[0], self.player_id))
 
             else: # second ship
                 action_list.append(get_offense_action(obs, ship[0], self.enemy_planet))
@@ -129,12 +129,7 @@ class Agent:
 
 
 def get_offense_action(obs: dict, idx: int, enemy_planet: tuple) -> list[int]:
-    try:
-        ship = obs["allied_ships"][idx]
-    except IndexError:
-        print(f"IndexError: No allied ship at index {idx}")
-        return []
-    
+    ship = obs["allied_ships"][idx]
     ship_id, ship_x, ship_y = ship[0], ship[1], ship[2]
     enemy_x, enemy_y = enemy_planet[0], enemy_planet[1]
     
@@ -177,36 +172,32 @@ def get_offense_action(obs: dict, idx: int, enemy_planet: tuple) -> list[int]:
     
     return [ship_id, 0, direction, speed]
 
-def get_explore_action(obs: dict, idx: int) -> list[int]:
+def get_explore_action(obs: dict, idx: int, player_id: int) -> list[int]:
     ship = obs["allied_ships"][idx]
     found = False
     target_x, target_y = None, None
     max_ones_count = -1
 
-    # Check if the ship already has target coordinates
-    if hasattr(ship, 'target_x') and hasattr(ship, 'target_y'):
-        target_x, target_y = ship.target_x, ship.target_y
-        found = True
-
-    if not found:
-        for i in range(len(obs['map'])):
-            for j in range(len(obs['map'][i])):
-                if format(obs['map'][i][j], '08b')[-1] == '1' and format(obs['map'][i][j], '08b')[0:2] == '00':
-                    ones_count = sum(
-                        1 for x in range(max(0, i-3), min(len(obs['map']), i+3))
-                        for y in range(max(0, j-3), min(len(obs['map'][i]), j+3))
-                        if format(obs['map'][x][y], '08b')[-1] == '1' and format(obs['map'][x][y], '08b')[0:2] == '00'
-                    )
-                    if ones_count > max_ones_count:
-                        max_ones_count = ones_count
-                        target_x, target_y = i, j
-                        found = True
+    for i in range(len(obs['map'])):
+        for j in range(len(obs['map'][i])):
+            if format(obs['map'][i][j], '08b')[-1] == '1' and format(obs['map'][i][j], '08b')[0:2] == '00':
+                ones_count = sum(
+                    1 for x in range(max(0, i-3), min(len(obs['map']), i+3))
+                    for y in range(max(0, j-3), min(len(obs['map'][i]), j+3))
+                    if format(obs['map'][x][y], '08b')[-1] == '1' and format(obs['map'][x][y], '08b')[0:2] == '00'
+                )
+                if ones_count > max_ones_count:
+                    max_ones_count = ones_count
+                    target_x, target_y = i, j
+                    found = True
 
     if not found:
         # Go left and up
-        return [ship[0], 0, random.choice([0, 1]), 1]
+        if player_id == 1:
+            return [ship[0], 0, random.choice([0, 1]), 1]
+        else:
+            return [ship[0], 0, random.choice([2, 3]), 1]
     else:
-        print(f"Ship {ship[0]} going to {target_x}, {target_y}")
         # Go towards the nearest planet
         dx = ship[1] - target_y
         dy = ship[2] - target_x
@@ -236,10 +227,9 @@ def get_defense_action(obs: dict, idx: int, home_planet: tuple) -> list[int]:
 
     return move_randomly_around_home(obs, ship, home_planet[0], home_planet[1])
 
-
 def shoot_enemy_if_in_range(enemy, ship) -> list[int]:
     """
-    Check if an enemy ship is within firing range (3 tiles) and directly aligned
+    Check if an enemy ship is within firing range (8 tiles) and directly aligned
     (same row or column) with our ship.
     
     Ship position: (ship[1], ship[2])
@@ -252,25 +242,26 @@ def shoot_enemy_if_in_range(enemy, ship) -> list[int]:
     
     # Check if ships are in the same row (y-coordinate)
     if ship_y == enemy_y:
-        # Enemy is to the right
-        if 0 < enemy_x - ship_x <= 3:
+        # Enemy is to the right of our ship
+        if enemy_x > ship_x and enemy_x - ship_x <= 8:
             return [ship[0], 1, 0]  # Shoot right
-        # Enemy is to the left
-        if 0 < ship_x - enemy_x <= 3:
+        
+        # Enemy is to the left of our ship
+        if enemy_x < ship_x and ship_x - enemy_x <= 8:
             return [ship[0], 1, 2]  # Shoot left
     
     # Check if ships are in the same column (x-coordinate)
     if ship_x == enemy_x:
-        # Enemy is below
-        if 0 < enemy_y - ship_y <= 3:
+        # Enemy is below our ship
+        if enemy_y > ship_y and enemy_y - ship_y <= 8:
             return [ship[0], 1, 1]  # Shoot down
-        # Enemy is above
-        if 0 < ship_y - enemy_y <= 3:
+        
+        # Enemy is above our ship
+        if enemy_y < ship_y and ship_y - enemy_y <= 8:
             return [ship[0], 1, 3]  # Shoot up
     
     # Enemy not in range or not aligned
     return []
-
 
 def move_randomly_around_home(obs : dict, ship, home_x, home_y, max_distance=15) -> list[int]:
     """
