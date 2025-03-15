@@ -84,6 +84,8 @@ class Agent:
         obs["allied_ships"] = allied_ship_temp
 
         action_list = []
+
+        action_list = []
         for ship in allied_ships:
             if ship[0] % 2:
                 action_list.append(get_defense_action(obs, ship[0], self.home_planet))
@@ -185,8 +187,11 @@ def get_defense_action(obs: dict, idx: int, home_planet: tuple) -> list[int]:
         choice = shoot_enemy_if_in_range(enemy, ship)
         if choice:
             return choice
+        
+    if ship[3] <= 30:
+        return return_home_on_low_hp(ship, home_planet[0], home_planet[1])
 
-    return move_randomly_around_home(ship, home_planet[0], home_planet[1])
+    return move_randomly_around_home(obs, ship, home_planet[0], home_planet[1])
 
 
 def shoot_enemy_if_in_range(enemy, ship) -> list[int]:
@@ -224,24 +229,63 @@ def shoot_enemy_if_in_range(enemy, ship) -> list[int]:
     return []
 
 
-def move_randomly_around_home(ship, home_x, home_y, max_distance=7) -> list[int]:
+def move_randomly_around_home(obs : dict, ship, home_x, home_y, max_distance=15) -> list[int]:
     """
     Poruszanie się losowo w obszarze max_distance wokół planety macierzystej.
     """
     ship_x, ship_y = ship[1], ship[2]
 
-    # Losowy wybór kierunku
-    direction = random.randint(0, 3)
+    for _ in range(10): 
+        # Losowy wybór kierunku
+        direction = random.randint(0, 3)
 
-    # Przewidywana nowa pozycja
-    new_x = ship_x + (1 if direction == 0 else -1 if direction == 2 else 0)
-    new_y = ship_y + (1 if direction == 1 else -1 if direction == 3 else 0)
+        # Przewidywana nowa pozycja
+        new_x = ship_x + (1 if direction == 0 else -1 if direction == 2 else 0)
+        new_y = ship_y + (1 if direction == 1 else -1 if direction == 3 else 0)
 
-    # Sprawdzenie, czy nowa pozycja mieści się w dozwolonym obszarze wokół planety
-    if abs(new_x - home_x) + abs(new_y - home_y) <= max_distance:
-        # Always use speed 1 for defensive ships around home
+        if not (0 <= new_x < 100 and 0 <= new_y < 100):
+            continue  # Jeśli poza mapą, ponawiamy próbę
+
+        # Sprawdzenie, czy nowa pozycja mieści się w dozwolonym obszarze wokół planety
+        if abs(new_x - home_x) + abs(new_y - home_y) > max_distance:
+            continue  # Jeśli poza zakresem, ponawiamy próbę
+
+        # Sprawdzenie, czy pole NIE jest asteroidą
+        if is_asteroid(obs, new_x, new_y):
+            continue  # Jeśli to asteroida, ponawiamy próbę
+
+        # Jeśli pole jest poprawne, wykonaj ruch
         return [ship[0], 0, direction, 1]  # Ruch o 1 pole w danym kierunku
+    
+    return [ship[0], 0, direction, 1] 
 
-    # Jeśli ruch wykracza poza obszar, zostań na miejscu
-    return [ship[0], 0, random.randint(0, 3), 0]  # Nie ruszaj się, jeśli brak dobrego ruchu
 
+def return_home_on_low_hp(ship, home_x, home_y) -> list[int]:
+    dx = ship[1] - home_x
+    dy = ship[2] - home_y
+
+    if abs(dx) > abs(dy):
+        # need to move in X direction first
+        if dx > 0:
+            # need to move left
+            return [ship[0], 0, 2, min(3, abs(dx))]
+        else:
+            # need to move right
+            return [ship[0], 0, 0, min(3, abs(dx))]
+    else:
+        # need to move in Y direction first
+        if dy > 0:
+            # need to move up
+            return [ship[0], 0, 3, min(3, abs(dy))]
+        else:
+            # need to move down
+            return [ship[0], 0, 1, min(3, abs(dy))]
+        
+def is_asteroid(obs: dict, x, y) -> bool:
+
+    point = obs['map'][x][y]
+    
+    if format(point, '08b')[-2] == '1':
+        return True
+
+    return False
