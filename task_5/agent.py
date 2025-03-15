@@ -61,8 +61,14 @@ class Agent:
         planets_occupation = obs.get('planets_occupation')
         resources = obs.get('resources')
 
-        action_list = []
+        allied_ships_temp = {}
         for ship in allied_ships:
+            allied_ships_temp[ship[0]] = ship
+
+        obs["allied_ships"] = allied_ships_temp
+
+        action_list = []
+        for ship in allied_ships.items():
             if ship[0] % 2:
                 action_list.append(get_defense_action(obs, ship[0]))
 
