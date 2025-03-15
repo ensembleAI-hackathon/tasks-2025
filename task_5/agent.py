@@ -100,14 +100,7 @@ class Agent:
 def get_defense_action(obs: dict, idx: int) -> list[int]:
     ship = obs["allied_ships"][idx]
 
-    home_planet = obs["planet_occupation"][0]
-
-    position = obs["map"][ship[1]][ship[2]]
-
-    neighborhood = get_bounds(position, 3)
-    visibility = get_bounds(position, 5)
-
-    choice = None
+    home_planet = obs["planets_occupation"][0]
 
     for enemy in obs["enemy_ships"]:
         choice = shoot_enemy_if_in_range(enemy, ship)
@@ -115,14 +108,6 @@ def get_defense_action(obs: dict, idx: int) -> list[int]:
             return choice
 
     return move_randomly_around_home(ship, home_planet[0], home_planet[1])
-
-
-
-def get_bounds(position, size):
-    r_min, r_max = max(position[0] - size, 0), min(position[0] + size, 100)
-    c_min, c_max = max(position[1] - size, 0), min(position[1] + size, 100)
-
-    return r_min, r_max, c_min, c_max
 
 
 def shoot_enemy_if_in_range(enemy, ship) -> list[int]:
