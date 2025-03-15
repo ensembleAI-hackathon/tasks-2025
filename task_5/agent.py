@@ -6,6 +6,15 @@ import numpy as np
 
 class Agent:
 
+    def load(self, abs_path: str):
+        pass
+
+    def eval(self):
+        pass
+
+    def to(self, device):
+        pass
+
     def __init__(self, player_id: int):
         self.player_id = player_id
         # Initialize home_planet and enemy_planet as None
@@ -85,7 +94,7 @@ class Agent:
                 action_list.append(get_defense_action(obs, ship[0], self.home_planet))
 
             elif ship[0] % 3 == 0: # first ship
-                action_list.append(get_explore_action(obs, ship[0], self.player_id))
+                action_list.append(get_explore_action(obs, ship[0], self.home_planet))
 
             else: # second ship
                 action_list.append(get_offense_action(obs, ship[0], self.enemy_planet))
@@ -94,39 +103,6 @@ class Agent:
             "ships_actions": action_list,
             "construction": 10
         }
-
-    def load(self, abs_path: str):
-        """
-        Function for loading all necessary weights for the agent. The abs_path is a path pointing to the directory,
-        where the weights for the agent are stored, so remember to join it to any path while loading.
-
-        :param abs_path:
-        :return:
-        """
-        ...
-        # self._model = torch.load(
-        #     "/home/aleksander/Desktop/dev/tasks-2025/task_5/example_weights/example_weights.pt",
-        #     weights_only=True,
-        # )
-
-    def eval(self):
-        """
-        With this function you should switch the agent to inference mode.
-
-        :return:
-        """
-        ...
-
-    def to(self, device):
-        """
-        This function allows you to move the agent to a GPU. Please keep that in mind,
-        because it can significantly speed up the computations and let you meet the time requirements.
-
-        :param device:
-        :return:
-        """
-        ...
-
 
 def get_offense_action(obs: dict, idx: int, enemy_planet: tuple) -> list[int]:
     ship = obs["allied_ships"][idx]
@@ -172,15 +148,30 @@ def get_offense_action(obs: dict, idx: int, enemy_planet: tuple) -> list[int]:
     
     return [ship_id, 0, direction, speed]
 
-def get_explore_action(obs: dict, idx: int, player_id: int) -> list[int]:
+def get_explore_action(obs: dict, idx: int, home_planet: tuple, ) -> list[int]:
+    """
+    Function to explore the map looking for neutral planets to capture.
+    Searches for clusters of valuable tiles and moves toward them.
+    If none found, moves in a direction away from home planet.
+    """
     ship = obs["allied_ships"][idx]
     found = False
     target_x, target_y = None, None
     max_ones_count = -1
+    
+    # Only try to shoot if firing cooldown is 0
+    if ship[4] == 0:  # ship[4] is firing_cooldown
+        for enemy in obs["enemy_ships"]:
+            choice = shoot_enemy_if_in_range(enemy, ship)
+            if choice:
+                return choice
 
+    # Look for clusters of valuable tiles (planets/resources)
     for i in range(len(obs['map'])):
         for j in range(len(obs['map'][i])):
+            # Check if this is a valuable tile (indicated by specific bit patterns)
             if format(obs['map'][i][j], '08b')[-1] == '1' and format(obs['map'][i][j], '08b')[0:2] == '00':
+                # Count nearby valuable tiles to find clusters
                 ones_count = sum(
                     1 for x in range(max(0, i-3), min(len(obs['map']), i+3))
                     for y in range(max(0, j-3), min(len(obs['map'][i]), j+3))
@@ -192,15 +183,16 @@ def get_explore_action(obs: dict, idx: int, player_id: int) -> list[int]:
                     found = True
 
     if not found:
-        # Go left and up
-        if player_id == 1:
+        # If no valuable targets found, move away from home planet
+        if home_planet[0] == 9:  # If home is at (9,9), move right or down
             return [ship[0], 0, random.choice([0, 1]), 1]
-        else:
+        else:  # If home is at (90,90), move left or up
             return [ship[0], 0, random.choice([2, 3]), 1]
     else:
-        # Go towards the nearest planet
-        dx = ship[1] - target_y
-        dy = ship[2] - target_x
+        # Go towards the identified target
+        # Note: The map coordinates and ship coordinates might be flipped (x,y vs y,x)
+        dx = ship[1] - target_y  # X distance (ship x - target y)
+        dy = ship[2] - target_x  # Y distance (ship y - target x)
 
         if abs(dx) > abs(dy):
             if dx > 0:
@@ -226,6 +218,8 @@ def get_defense_action(obs: dict, idx: int, home_planet: tuple) -> list[int]:
         return return_home_on_low_hp(ship, home_planet[0], home_planet[1])
 
     return move_randomly_around_home(obs, ship, home_planet[0], home_planet[1])
+
+
 
 def shoot_enemy_if_in_range(enemy, ship) -> list[int]:
     """
