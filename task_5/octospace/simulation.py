@@ -14,7 +14,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def setup_agent(agent_class: Agent.__class__, player_id: int):
-    agent = agent_class()
+    agent = agent_class(player_id=player_id)
     agent.load(os.path.abspath(f"agents/{player_id}/"))
     agent.to(DEVICE)
     agent.eval()

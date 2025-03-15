@@ -33,7 +33,6 @@ def run_match(
     if not verbose:
         gym.logger.min_level = 40
 
-
     player_1_id = 46
     player_2_id = 47
 

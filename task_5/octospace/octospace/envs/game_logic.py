@@ -420,7 +420,7 @@ def _handle_visibility(
         vision_add_start_y = start_y - ship_y + VISION_RANGE
         vision_add_end_y = end_y - ship_y + VISION_RANGE
 
-        player_1_visibility_mask[start_x:end_x, start_y:end_y] = player_1_visibility_mask[start_x:end_x, start_y:end_y] | VISION_ADD_MASK[vision_add_start_x:vision_add_end_x, vision_add_start_y:vision_add_end_y]
+        player_1_visibility_mask[start_y:end_y, start_x:end_x] = player_1_visibility_mask[start_y:end_y, start_x:end_x] | VISION_ADD_MASK[vision_add_start_y:vision_add_end_y, vision_add_start_x:vision_add_end_x]
 
     for ship_id in player_2_ships.keys():
         ship_x, ship_y = player_2_ships[ship_id][0], player_2_ships[ship_id][1]
@@ -434,8 +434,8 @@ def _handle_visibility(
         vision_add_start_y = start_y - ship_y + VISION_RANGE
         vision_add_end_y = end_y - ship_y + VISION_RANGE
 
-        player_2_visibility_mask[start_x:end_x, start_y:end_y] = player_2_visibility_mask[start_x:end_x, start_y:end_y] | VISION_ADD_MASK[vision_add_start_x:vision_add_end_x,
-                                                                  vision_add_start_y:vision_add_end_y]
+        player_2_visibility_mask[start_y:end_y, start_x:end_x] = player_2_visibility_mask[start_y:end_y, start_x:end_x] | VISION_ADD_MASK[vision_add_start_y:vision_add_end_y,
+                                                                                                                          vision_add_start_x:vision_add_end_x]
 
 
 def _check_victory_conditions(

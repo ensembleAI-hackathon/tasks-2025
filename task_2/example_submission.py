@@ -40,6 +40,37 @@ class TaskDataset(Dataset):
         return len(self.ids)
 
 
+def generate_random_image():
+    """Generates a random 32x32 RGB image and returns it as bytes."""
+    random_pixels = np.random.randint(0, 256, (32, 32, 3), dtype=np.uint8)
+    img = Image.fromarray(random_pixels, 'RGB')
+
+    # Save to a BytesIO buffer
+    img_bytes = io.BytesIO()
+    img.save(img_bytes, format="PNG")
+    return img_bytes.getvalue()
+
+
+def quering_random():
+    files = [("files", ("image2.png", generate_random_image(), "image/png")) for _ in range(1000)]
+    response = requests.post(
+        QUERY_URL,
+        headers={"token": TOKEN},
+        files=files
+    )
+    if response.status_code == 200:
+        buffer = io.BytesIO(response.content)
+        np_array = np.load(buffer)
+        print(np_array.shape)
+        print(np_array)
+
+def reset_example():
+    response = requests.post(
+        RESET_URL,
+        headers={"token": TOKEN}
+    )
+
+    print(response.text)
 
 def quering_example():
     dataset = torch.load(...)                   # Path to ModelStealingPub.pt
@@ -54,7 +85,7 @@ def quering_example():
         image_data.append(img_base64)
 
     payload = json.dumps(image_data)
-    response = requests.get(QUERY_URL, headers={"token": TOKEN}, files={"file": payload})
+    response = requests.post(QUERY_URL, headers={"token": TOKEN}, files={"file": payload})
     if response.status_code == 200:
         representation = response.json()["representations"]
     else:
@@ -97,7 +128,7 @@ def submitting_example():
             raise Exception(f"Invalid model, {e=}")
         try:
             out = stolen_model.run(
-                None, {"x": np.random.randn(1, 3, 32, 32).astype(np.float32)}
+                None, {"x": np.random.randn(32, 3, 32, 32).astype(np.float32)}
             )[0][0]
         except Exception as e:
             raise Exception(f"Some issue with the input, {e=}")
@@ -105,6 +136,7 @@ def submitting_example():
 
     response = requests.post(SUBMIT_URL, headers={"token": TOKEN}, files={"onnx_model": open(path, "rb")})
     print(response.status_code, response.text)
+
 
 
 if __name__ == '__main__':

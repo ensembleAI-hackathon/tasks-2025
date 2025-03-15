@@ -1,6 +1,13 @@
 # Skeleton for Agent class
 
 class Agent:
+    def __init__(self, player_id: int):
+        """
+        Args:
+            player_id: Indicates whether agent is player 0 or player 1 in game.
+        """
+        self.player_id = player_id
+
     def get_action(self, obs: dict) -> dict:
         """
         Main function, which gets called during step() of the environment.

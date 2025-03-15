@@ -349,7 +349,7 @@ def _render_vision_debug(
 
         for y in range(BOARD_SIZE):
             for x in range(BOARD_SIZE):
-                if visibility_mask[x, y]:
+                if visibility_mask[y, x]:
                     vision_surface.blit(player_rectangle, (x*TILE_SIZE, y*TILE_SIZE))
 
         vision_surface.set_alpha(64)

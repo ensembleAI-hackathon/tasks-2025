@@ -2,7 +2,7 @@ import numpy as np
 VERSION = '1.0.1'
 
 # You may change this, to adjust the window into your screen
-WINDOW_SIZE = 1024
+WINDOW_SIZE = 800
 
 
 # Gameplay settings
