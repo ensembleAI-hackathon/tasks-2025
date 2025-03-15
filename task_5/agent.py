@@ -269,9 +269,18 @@ def move_randomly_around_home(obs : dict, ship, home_x, home_y, max_distance=15)
     """
     ship_x, ship_y = ship[1], ship[2]
 
-    for _ in range(10): 
-        # Losowy wybór kierunku
-        direction = random.randint(0, 3)
+    for _ in range(10):
+        if home_x == 9 and ship_x <= home_x:
+            direction = 0
+        elif home_y == 9 and ship_y <= home_y:
+            direction = 1
+        elif home_x == 90 and ship_x >= home_x:
+            direction = 2
+        elif home_y == 90 and ship_y >= home_y:
+            direction = 3
+        else:
+            # Losowy wybór kierunku
+            direction = random.randint(0, 3)
 
         # Przewidywana nowa pozycja
         new_x = ship_x + (1 if direction == 0 else -1 if direction == 2 else 0)
