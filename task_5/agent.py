@@ -56,16 +56,12 @@ class Agent:
 
         action_list = []
         for ship in allied_ships:
-            ship_id = ship[0]
-            shoot = random.randint(0, 1)
-            action = [ship_id, shoot, random.randint(0, 3)]
-            if shoot == 0:
-                action.append(3)
-            action_list.append(action)
+            if ship[0] % 2:
+                action_list.append(get_defense_action(obs, ship[0]))
 
         return {
             "ships_actions": action_list,
-            "construction": 2 if resources.sum() == 800 else 0
+            "construction": 10
         }
 
     def load(self, abs_path: str):
@@ -99,3 +95,51 @@ class Agent:
         :return:
         """
         ...
+
+
+def get_defense_action(obs: dict, idx: int) -> list[int]:
+    ship = obs["allied_ships"][idx]
+
+    home_planet = obs["planet_occupation"][0]
+
+    position = obs["map"][ship[1]][ship[2]]
+
+    neighborhood = get_bounds(position, 3)
+    visibility = get_bounds(position, 5)
+
+    choice = None
+
+    for enemy in obs["enemy_ships"]:
+        choice = shoot_enemy_if_in_range(enemy, ship)
+        if choice:
+            return choice
+
+    return move_to_random_avail_field(ship, neighborhood)
+
+
+
+def get_bounds(position, size):
+    r_min, r_max = max(position[0] - size, 0), min(position[0] + size, 100)
+    c_min, c_max = max(position[1] - size, 0), min(position[1] + size, 100)
+
+    return r_min, r_max, c_min, c_max
+
+
+def shoot_enemy_if_in_range(enemy, ship) -> list[int]:
+    if 0 < ship[1] - enemy[1] <= 3:  # enemy on the left
+        return [ship[0], 1, 2]
+
+    if 0 < enemy[1] - ship[1] <= 3:  # enemy on the right
+        return [ship[0], 1, 0]
+
+    if 0 < ship[2] - enemy[2] <= 3:  # enemy up
+        return [ship[0], 1, 3]
+
+    if 0 < enemy[2] - ship[2] <= 3:  # enemy down
+        return [ship[0], 1, 1]
+
+    return []
+
+
+def move_to_random_avail_field(ship, neighborhood) -> list[int]:
+
