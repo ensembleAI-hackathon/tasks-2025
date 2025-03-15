@@ -7,8 +7,7 @@ import numpy as np
 class Agent:
 
     def __init__(self, player_id: int):
-        self.player_id = player_id  
-        print(f"Player ID: {self.player_id}")
+        self.player_id = player_id
         # Initialize home_planet and enemy_planet as None
         # They will be set on the first call to get_action and never changed again
         self.home_planet = None
@@ -73,17 +72,12 @@ class Agent:
                 self.enemy_planet = (90, 90)
             else:
                 self.enemy_planet = (9, 9)
-                
-            print(f"Home planet set to: {self.home_planet}")
-            print(f"Enemy planet set to: {self.enemy_planet}")
 
         allied_ship_temp = {}
         for ship in allied_ships:
             allied_ship_temp[ship[0]] = ship
         
         obs["allied_ships"] = allied_ship_temp
-
-        action_list = []
 
         action_list = []
         for ship in allied_ships:
@@ -227,10 +221,6 @@ def get_explore_action(obs: dict, idx: int) -> list[int]:
                 return [ship[0], 0, 3, min(3, abs(dy))]  # Move up
             else:
                 return [ship[0], 0, 1, min(3, abs(dy))]  # Move down
-
-
-def get_defense_action(obs: dict, idx: int) -> list[int]:
-    ship = obs["allied_ships"][idx]
 
 
 def get_defense_action(obs: dict, idx: int, home_planet: tuple) -> list[int]:
