@@ -48,29 +48,10 @@ class Agent:
         :return:
         """
 
-        actions = []
-        
-        for ship in obs['allied_ships']:
-            x, y, hp = ship[1], ship[2], ship[3]
-            nearest_enemy = min(obs['enemy_ships'], key=lambda s: abs(ship[1] - s[1]) + abs(ship[2] - s[2]), default=(0, 0, 0))
-            nearest_planet = min(obs['planets_occupation'].keys(), key=lambda p: abs(ship[1] - p[0]) + abs(ship[2] - p[1]), default=(0, 0))
-            
-            # Tworzymy tensor wejściowy dla modelu
-            inputs = torch.tensor([[x, y, hp, abs(x - nearest_enemy[1]), abs(y - nearest_enemy[2]), obs['resources']]], dtype=torch.float32).to(self.device)
-            
-            # Model przewiduje najlepszą akcję
-            with torch.no_grad():
-                action_type = torch.argmax(self._model(inputs)).item()
-            
-            if action_type == 0:
-                actions.append((ship[0], 0, random.randint(0, 3), random.randint(1, 3)))  # Ruch
-            elif action_type == 1:
-                actions.append((ship[0], 1, random.randint(0, 3)))  # Strzał
-            else:
-                actions.append((ship[0], 0, 0, 0))  # Kolonizacja
-
-        return {"ships_actions": actions, "construction": min(10, obs['resources'] // 100)}
-
+        return {
+            "ships_actions": [],
+            "construction": 0
+        }
 
 
     def load(self, abs_path: str):
@@ -81,7 +62,11 @@ class Agent:
         :param abs_path:
         :return:
         """
-        self._model = torch.load(abs_path)
+        ...
+        # self._model = torch.load(
+        #     "/home/aleksander/Desktop/dev/tasks-2025/task_5/example_weights/example_weights.pt",
+        #     weights_only=True,
+        # )
 
     def eval(self):
         """
@@ -89,7 +74,7 @@ class Agent:
 
         :return:
         """
-        self._model.eval()
+        ...
 
     def to(self, device):
         """
@@ -99,4 +84,4 @@ class Agent:
         :param device:
         :return:
         """
-        self._model.to(device)
+        ...
