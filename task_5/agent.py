@@ -1,4 +1,6 @@
 # Skeleton for Agent class
+import torch
+
 
 class Agent:
     def get_action(self, obs: dict) -> dict:
@@ -59,7 +61,7 @@ class Agent:
         :param abs_path:
         :return:
         """
-        pass
+        self._model = torch.load(abs_path)
 
     def eval(self):
         """
@@ -67,7 +69,7 @@ class Agent:
 
         :return:
         """
-        pass
+        self._model.eval()
 
     def to(self, device):
         """
@@ -77,4 +79,4 @@ class Agent:
         :param device:
         :return:
         """
-        pass
+        self._model.to(device)
