@@ -3,6 +3,10 @@ import random
 import torch
 import numpy as np
 
+# Define role constants for better code readability
+ROLE_EXPLORE = "explore"
+ROLE_ATTACK = "attack"
+ROLE_DEFEND = "defend"
 
 class Agent:
 
@@ -21,6 +25,14 @@ class Agent:
         # They will be set on the first call to get_action and never changed again
         self.home_planet = None
         self.enemy_planet = None
+        
+        # Initialize the ship roles dictionary
+        self.ship_roles = {}
+        
+        # Game state tracking
+        self.turn_counter = 0
+        self.last_known_enemy_positions = {}
+        self.planet_targets = {}  # Track which neutral planets are being targeted
 
     def get_action(self, obs: dict) -> dict:
         """
@@ -71,6 +83,9 @@ class Agent:
         enemy_ships = obs.get('enemy_ships')
         planets_occupation = obs.get('planets_occupation')
         resources = obs.get('resources')
+        
+        # Increment turn counter
+        self.turn_counter += 1
 
         # Set home_planet and enemy_planet only once on the first call
         if self.home_planet is None and planets_occupation:
@@ -82,30 +97,183 @@ class Agent:
             else:
                 self.enemy_planet = (9, 9)
 
-        allied_ship_temp = {}
+        # Create dictionary for easier access to ships by ID
+        allied_ship_dict = {}
         for ship in allied_ships:
-            allied_ship_temp[ship[0]] = ship
+            ship_id = ship[0]
+            allied_ship_dict[ship_id] = ship
         
-        obs["allied_ships"] = allied_ship_temp
+        # Store the ship dictionary in obs for use by action functions
+        obs["allied_ships_dict"] = allied_ship_dict
+        
+        # Update the enemy ship positions for tracking
+        if enemy_ships:
+            for enemy in enemy_ships:
+                self.last_known_enemy_positions[enemy[0]] = (enemy[1], enemy[2], self.turn_counter)
+        
+        # Run the scheduler to update ship roles - pass the original allied_ships list
+        # ALL role management should happen in the scheduler
+        self.scheduler(obs, allied_ships)
 
         action_list = []
+        # Iterate through the original allied_ships list
         for ship in allied_ships:
-            if ship[0] % 3 == 2: # third ship
-                action_list.append(get_defense_action(obs, ship[0], self.home_planet))
-
-            elif ship[0] % 3 == 0: # first ship
-                action_list.append(get_explore_action(obs, ship[0], self.home_planet))
-
-            else: # second ship
-                action_list.append(get_offense_action(obs, ship[0], self.enemy_planet))
+            ship_id = ship[0]
+            
+            # Get the ship's role from the dictionary - the scheduler should have assigned one
+            role = self.ship_roles[ship_id]  # Using direct lookup since scheduler ensures all ships have roles
+            
+            # Execute the appropriate action based on the ship's role
+            if role == ROLE_DEFEND:
+                action_list.append(get_defense_action(obs, ship_id, self.home_planet))
+            elif role == ROLE_EXPLORE:
+                action_list.append(get_explore_action(obs, ship_id, self.home_planet))
+            elif role == ROLE_ATTACK:
+                action_list.append(get_offense_action(obs, ship_id, self.enemy_planet))
+            else:
+                # This should never happen if scheduler is working correctly
+                print(f"Warning: Ship {ship_id} has unknown role: {role}. Defaulting to explorer.")
+                action_list.append(get_explore_action(obs, ship_id, self.home_planet))
 
         return {
             "ships_actions": action_list,
             "construction": 10
         }
+    
+    def scheduler(self, obs: dict, allied_ships):
+        """
+        Assigns and updates roles for ships based on the current game state.
+        This function dynamically manages ship roles throughout the game.
+        
+        Logic:
+        1. Ensure all ships have an initial role
+        2. Reassign roles based on game state (enemy presence, planets, etc.)
+        3. Balance roles to maintain a good distribution of explorers, attackers, and defenders
+        
+        :param obs: The current game observation
+        :param allied_ships: List of allied ships
+        """
+        enemy_ships = obs.get('enemy_ships')
+        planets_occupation = obs.get('planets_occupation')
+        
+        # Track the count of each role for balancing
+        role_counts = {ROLE_EXPLORE: 0, ROLE_ATTACK: 0, ROLE_DEFEND: 0}
+        
+        
+        # Step 1: ALWAYS ensure all ships have an initial role
+        for ship in allied_ships:
+            ship_id = ship[0]  # Extract the ID from the ship
+            
+            # Check if the ship already has a role
+            if ship_id not in self.ship_roles:
+                # Assign initial role based on ID (for compatibility with original logic)
+                if ship_id % 3 == 2:
+                    self.ship_roles[ship_id] = ROLE_DEFEND
+                elif ship_id % 3 == 0:
+                    self.ship_roles[ship_id] = ROLE_EXPLORE
+                else:
+                    self.ship_roles[ship_id] = ROLE_ATTACK
+
+            
+            # Count the current distribution of roles
+            current_role = self.ship_roles[ship_id]
+            role_counts[current_role] = role_counts.get(current_role, 0) + 1
+            print(role_counts)
+        
+        # Step 2: Dynamic role reassignment based on game conditions
+        
+        # Check for nearby enemy ships that might require more defenders
+        # enemy_near_home = False
+        # if enemy_ships and self.home_planet:
+        #     home_x, home_y = self.home_planet[0], self.home_planet[1]
+        #     for enemy in enemy_ships:
+        #         enemy_x, enemy_y = enemy[1], enemy[2]
+        #         distance_to_home = abs(enemy_x - home_x) + abs(enemy_y - home_y)
+        #         if distance_to_home < 20:  # Threshold distance to be considered "near"
+        #             enemy_near_home = True
+        #             break
+        
+        # # Get the total number of ships
+        total_ships = len(allied_ships)
+        
+        # Step 3: Balance roles based on game state
+        
+        # Early game strategy (first 50 turns)
+        if self.turn_counter < 250:
+            target_distribution = {
+                ROLE_EXPLORE: max(1, int(total_ships * 1.0)),  # 0% explorers
+                ROLE_ATTACK: max(0, int(total_ships * 0)),   # 0% attackers
+                ROLE_DEFEND: max(0, int(total_ships * 0))    # 0% defenders
+            }
+        # Mid game strategy
+        elif 250 <= self.turn_counter < 500:
+            target_distribution = {
+                ROLE_EXPLORE: max(0, int(total_ships * 0)),  # 30% explorers
+                ROLE_ATTACK: max(1, int(total_ships * 1.0)),   # 40% attackers
+                ROLE_DEFEND: max(0, int(total_ships * 0))    # 30% defenders
+            }
+        # Late game strategy
+        else:
+            target_distribution = {
+                ROLE_EXPLORE: max(1, int(total_ships * 0.5)),  # 20% explorers
+                ROLE_ATTACK: max(0, int(total_ships * 0)),   # 50% attackers
+                ROLE_DEFEND: max(1, int(total_ships * 0.5))    # 30% defenders
+            }
+        
+        # Adjust for enemy presence near home base
+        # if enemy_near_home:
+        #     # Allocate more ships to defense if enemies are near home
+        #     target_distribution[ROLE_DEFEND] = max(2, int(total_ships * 0.5))
+        #     target_distribution[ROLE_ATTACK] = max(1, int(total_ships * 0.3))
+        #     target_distribution[ROLE_EXPLORE] = max(1, total_ships - target_distribution[ROLE_DEFEND] - target_distribution[ROLE_ATTACK])
+        
+        # Make adjustments to achieve the target distribution
+        for role, target_count in target_distribution.items():
+            current_count = role_counts.get(role, 0)
+            
+            # If we need more ships in this role
+            while current_count < target_count:
+                # Find a role that has excess ships
+                for excess_role in role_counts:
+                    if excess_role != role and role_counts[excess_role] > target_distribution[excess_role]:
+                        # Find a ship to reassign
+                        for ship in allied_ships:
+                            ship_id = ship[0]
+                            if self.ship_roles.get(ship_id) == excess_role:
+                                # Consider health before reassigning
+                                ship_health = ship[3]
+                                
+                                # Don't reassign critically damaged ships to attack
+                                if role == ROLE_ATTACK and ship_health < 30:
+                                    continue
+                                    
+                                # Reassign the ship
+                                self.ship_roles[ship_id] = role
+                                role_counts[excess_role] -= 1
+                                role_counts[role] += 1
+                                current_count += 1
+                                
+                                # Print role change notification for debugging
+                                print(f"Turn {self.turn_counter}: Ship {ship_id} reassigned from {excess_role} to {role}")
+                                
+                                break
+                        
+                        # If we've reached the target, break out
+                        if current_count >= target_count:
+                            break
+                
+                # If we can't find any more ships to reassign, just break
+                if current_count < target_count:
+                    break
+        
+        # Cleanup: Remove entries for ships that no longer exist
+        ship_ids = [ship[0] for ship in allied_ships]
+        for ship_id in list(self.ship_roles.keys()):
+            if ship_id not in ship_ids:
+                del self.ship_roles[ship_id]
 
 def get_offense_action(obs: dict, idx: int, enemy_planet: tuple) -> list[int]:
-    ship = obs["allied_ships"][idx]
+    ship = obs["allied_ships_dict"][idx]
     ship_id, ship_x, ship_y = ship[0], ship[1], ship[2]
     enemy_x, enemy_y = enemy_planet[0], enemy_planet[1]
     
@@ -154,7 +322,7 @@ def get_explore_action(obs: dict, idx: int, home_planet: tuple, ) -> list[int]:
     Searches for clusters of valuable tiles and moves toward them.
     If none found, moves in a direction away from home planet.
     """
-    ship = obs["allied_ships"][idx]
+    ship = obs["allied_ships_dict"][idx]
     found = False
     target_x, target_y = None, None
     max_ones_count = -1
@@ -188,6 +356,8 @@ def get_explore_action(obs: dict, idx: int, home_planet: tuple, ) -> list[int]:
             return [ship[0], 0, random.choice([0, 1]), 1]
         else:  # If home is at (90,90), move left or up
             return [ship[0], 0, random.choice([2, 3]), 1]
+        
+
     else:
         # Go towards the identified target
         # Note: The map coordinates and ship coordinates might be flipped (x,y vs y,x)
@@ -207,15 +377,15 @@ def get_explore_action(obs: dict, idx: int, home_planet: tuple, ) -> list[int]:
 
 
 def get_defense_action(obs: dict, idx: int, home_planet: tuple) -> list[int]:
-    ship = obs["allied_ships"][idx]
+    ship = obs["allied_ships_dict"][idx]
 
     for enemy in obs["enemy_ships"]:
         choice = shoot_enemy_if_in_range(enemy, ship)
         if choice:
             return choice
         
-    if ship[3] <= 30 or home_planet[2] != 0:
-        return return_home(ship, home_planet[0], home_planet[1])
+    if ship[3] <= 30:
+        return return_home_on_low_hp(ship, home_planet[0], home_planet[1])
 
     return move_randomly_around_home(obs, ship, home_planet[0], home_planet[1])
 
@@ -297,7 +467,7 @@ def move_randomly_around_home(obs : dict, ship, home_x, home_y, max_distance=15)
     return [ship[0], 0, direction, 1] 
 
 
-def return_home(ship, home_x, home_y) -> list[int]:
+def return_home_on_low_hp(ship, home_x, home_y) -> list[int]:
     dx = ship[1] - home_x
     dy = ship[2] - home_y
 
