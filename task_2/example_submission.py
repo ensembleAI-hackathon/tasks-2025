@@ -13,9 +13,9 @@ from typing import Tuple
 
 
 TOKEN = ...                         # Your token here
-SUBMIT_URL = "149.156.182.9:6060/task-2/submit"
-RESET_URL = "149.156.182.9:6060/task-2/reset"
-QUERY_URL = "149.156.182.9:6060/task-2/query"
+SUBMIT_URL = "http://149.156.182.9:6060/task-2/submit"
+RESET_URL = "http://149.156.182.9:6060/task-2/reset"
+QUERY_URL = "http://149.156.182.9:6060/task-2/query"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
