@@ -114,7 +114,7 @@ def get_defense_action(obs: dict, idx: int) -> list[int]:
         if choice:
             return choice
 
-    return move_to_random_avail_field(ship, neighborhood)
+    return move_randomly_around_home(ship, home_planet[0], home_planet[1])
 
 
 
