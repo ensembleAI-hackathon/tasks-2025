@@ -54,11 +54,11 @@ def simulate_game(
             obs, info = env.reset()
 
             if curr_round % 2 == 1:
-                agent_1 = setup_agent(agent_class=player_1_agent_class, player_id=player_1_id, side=(curr_round % 2))
-                agent_2 = setup_agent(agent_class=player_2_agent_class, player_id=player_2_id, side=((curr_round + 1) % 2))
-            else:
                 agent_2 = setup_agent(agent_class=player_1_agent_class, player_id=player_1_id, side=(curr_round % 2))
                 agent_1 = setup_agent(agent_class=player_2_agent_class, player_id=player_2_id, side=((curr_round + 1) % 2))
+            else:
+                agent_1 = setup_agent(agent_class=player_1_agent_class, player_id=player_1_id, side=(curr_round % 2))
+                agent_2 = setup_agent(agent_class=player_2_agent_class, player_id=player_2_id, side=((curr_round + 1) % 2))
 
         env.render()
 
